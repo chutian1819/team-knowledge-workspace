@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "product_version": "0.1.0",
+  "upstream": {
+    "repository": "https://github.com/Tencent/WeKnora",
+    "tag": "v0.8.3",
+    "commit": "3e22822c1d2397be730c458c7539d0eb8c113a24"
+  },
+  "built_at": "2026-10-20T11:02:54.051683+00:00",
+  "images": {
+    "app": {
+      "reference": "context-workspace/app:0.1.0",
+      "image_id": "sha256:13d3786ae3224943ae5668fe779bc55deef481a9435df8f0cb0f9c372ec65303"
+    },
+    "docreader": {
+      "reference": "context-workspace/docreader:0.1.0",
+      "image_id": "sha256:42821508c9c46430a6ca692a8849d5ad773d6780cfb21b93ac49fb01a1f3aa22"
+    },
+    "frontend": {
+      "reference": "context-workspace/frontend:0.1.0",
+      "image_id": "sha256:c5d44bbe5e56f221fc08eef2bb616e199725ce0e96612feeccb2098f2a1c3c8a"
+    },
+    "postgres": {
+      "reference": "paradedb/paradedb:v0.25.11-pg17@sha256:78d65750f0f88a56548526201bcab9910f83b90fe929cdbf979890f3f80b0f95",
+      "image_id": "sha256:78d65750f0f88a56548526201bcab9910f83b90fe929cdbf979890f3f80b0f95"
+    },
+    "redis": {
+      "reference": "redis:7.0-alpine@sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2",
+      "image_id": "sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2"
+    }
+  },
+  "dependency_locks_sha256": {
+    "go.mod": "0aa50213b2121cea9aab8c3ccfe1f5c4eb19eca4e708a6dba76d85f60bdd9a42",
+    "go.sum": "a2081706732e72cf8363165f71a0a7cf0905303111513973993a73222362654a",
+    "frontend/package-lock.json": "db8456ad01de97c55f728d2c00be72fc43bec211ba136df5c3857448e9e56fb3",
+    "docreader/uv.lock": "57861b67cfcbbaeee7e8ae49b8f22985b6eae4d83ffd3c0b59f761181af1bf85"
+  },
+  "notes": [
+    "Local image IDs identify the tested build. For migration to another server, save/load these images or publish them to your own registry and pin its digests.",
+    "No model credentials or private evidence are included."
+  ]
+}

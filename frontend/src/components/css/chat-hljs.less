@@ -1,0 +1,73 @@
+// Scoped selectors consume an inherited palette, so nested answer components
+// cannot override the active theme with a more specific literal color.
+.chat-markdown-hljs() {
+  :deep(.chat-code-block__pre) {
+    .hljs {
+      color: var(--chat-hljs-text);
+      background: transparent;
+    }
+
+    .hljs-doctag,
+    .hljs-keyword,
+    .hljs-meta .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_ {
+      color: var(--chat-hljs-keyword);
+    }
+
+    .hljs-title,
+    .hljs-title.class_,
+    .hljs-title.class_.inherited__,
+    .hljs-title.function_ {
+      color: var(--chat-hljs-title);
+    }
+
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-literal,
+    .hljs-meta,
+    .hljs-number,
+    .hljs-operator,
+    .hljs-variable,
+    .hljs-selector-attr,
+    .hljs-selector-class,
+    .hljs-selector-id {
+      color: var(--chat-hljs-attribute);
+    }
+
+    .hljs-regexp,
+    .hljs-string,
+    .hljs-meta .hljs-string {
+      color: var(--chat-hljs-string);
+    }
+
+    .hljs-built_in,
+    .hljs-symbol {
+      color: var(--chat-hljs-builtin);
+    }
+
+    .hljs-comment,
+    .hljs-code,
+    .hljs-formula {
+      color: var(--chat-hljs-comment);
+    }
+
+    .hljs-name,
+    .hljs-quote,
+    .hljs-selector-tag,
+    .hljs-selector-pseudo {
+      color: var(--chat-hljs-name);
+    }
+
+    .hljs-subst {
+      color: var(--chat-hljs-text);
+    }
+
+    .hljs-section {
+      color: var(--chat-hljs-section);
+      font-weight: 700;
+    }
+  }
+}

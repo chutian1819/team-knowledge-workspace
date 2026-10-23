@@ -1,0 +1,15 @@
+# Optional HTTPS-tunnel entry; business services and all data stay on this Mac.
+# Use together with compose.research.yaml. No database/model ports are published.
+services:
+  public-gateway:
+    image: nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1
+    container_name: ${RESEARCH_PROJECT:-context-workspace}-public-gateway
+    ports:
+      - "127.0.0.1:8091:80"
+    volumes:
+      - ./deploy/research-public/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - WeKnora-network
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.25

@@ -1,0 +1,4 @@
+# python-docx, LibreOffice and the parser dependencies already exist here.
+# Install no additional document stack or service.
+FROM wechatopenai/weknora-docreader:v0.8.3@sha256:9af668ac0ac857b9dfe8430d0fe77c0e5ad2636dc2b5285cd5500a13d5a35266
+COPY docreader /app/docreader

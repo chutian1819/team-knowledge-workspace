@@ -1,0 +1,150 @@
+// 对 TDesign 组件的全局意图覆盖。组件内只做局部微调，不要在 scoped 样式里用 !important 和 TDesign 打架。
+
+// 悬浮面板皮肤：给 t-popup / t-select 等的 overlayClassName 加上 `wk-popover` 即可。
+// 用两级选择器压过 TDesign 默认的 .t-popup__content，不需要 !important。
+.wk-popover .t-popup__content {
+  padding: 0;
+  border-radius: var(--app-radius-xl);
+  background: var(--app-surface-glass);
+  border: 1px solid var(--app-border-subtle);
+  box-shadow: var(--app-shadow-float), var(--app-shadow-inset);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  overflow: hidden;
+}
+
+
+// .wk-popover clips to its rounded corners with overflow:hidden, which also
+// cancels the overflow-y:auto TDesign puts on a select's list — the options
+// past the first screenful become unreachable rather than merely unseen.
+// Restore vertical scrolling for any select wearing this skin; the horizontal
+// axis stays clipped, which is what the rounded corners needed.
+.t-select__dropdown.wk-popover .t-popup__content {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// The skin's padding:0 suits menus, whose items bring their own spacing. A popup
+// that holds a form (invite, create user, change password) has no such inner
+// padding, so add `wk-popover--form` next to `wk-popover` to give it the frame
+// back, and let a tall form scroll instead of being clipped.
+.wk-popover.wk-popover--form .t-popup__content {
+  padding: 14px 16px;
+  min-width: 300px;
+  max-width: min(392px, calc(100vw - 24px));
+  max-height: min(480px, calc(100vh - 96px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// A quiet option surface, with the brand accent reserved for the small check.
+.t-select-option.t-is-selected:not(.t-is-disabled),
+.t-select-option.t-is-selected:not(.t-is-disabled):hover {
+  background-color: var(--app-selection-bg);
+  color: var(--td-text-color-primary);
+  font-weight: 500;
+}
+
+// A check keeps single-selection menus distinct from hover without using color alone.
+.t-select-option.t-is-selected:not(.t-is-disabled):not(:has(.t-checkbox))::after {
+  content: '';
+  flex: 0 0 auto;
+  width: 5px;
+  height: 9px;
+  margin-left: auto;
+  margin-right: 2px;
+  color: var(--td-brand-color);
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-1px) rotate(45deg);
+}
+.t-select-option.t-is-selected:not(.t-is-disabled):not(:has(.t-checkbox)) {
+  gap: 8px;
+}
+
+.t-button {
+  font-weight: 500;
+  border-radius: var(--app-radius-md);
+  transition: background-color var(--app-motion-fast) var(--app-ease-out),
+    border-color var(--app-motion-fast) var(--app-ease-out),
+    box-shadow var(--app-motion-fast) var(--app-ease-out),
+    color var(--app-motion-fast) var(--app-ease-out),
+    transform var(--app-motion-instant) var(--app-ease-out);
+}
+
+.t-button:not(.t-is-disabled):not(.t-is-loading):active {
+  transform: translateY(1px);
+}
+
+.t-button--theme-primary.t-button--variant-base:not(.t-is-disabled) {
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--td-brand-color) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+.t-button--variant-outline:not(.t-is-disabled) {
+  background: var(--app-surface-raised);
+  box-shadow: var(--app-shadow-sm);
+}
+
+@media (hover: hover) {
+  .t-button--theme-primary.t-button--variant-base:not(.t-is-disabled):not(.t-is-loading):hover {
+    box-shadow: 0 3px 9px color-mix(in srgb, var(--td-brand-color) 18%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, .14);
+  }
+  .t-button--variant-outline:not(.t-is-disabled):hover {
+    background: var(--td-bg-color-container-hover);
+    box-shadow: var(--app-shadow-md);
+  }
+}
+
+:root[theme-mode="dark"] .t-button--theme-primary:not(.t-button--variant-base):not(.t-is-disabled) {
+  color: var(--td-text-color-brand);
+}
+
+.t-dialog {
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-panel);
+  background: var(--app-surface-raised);
+  box-shadow: var(--app-shadow-float), var(--app-shadow-inset);
+}
+
+.t-dialog__header-content {
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.t-input,
+.t-textarea__inner {
+  border-radius: var(--app-radius-md);
+  transition: background-color var(--app-motion-fast) var(--app-ease-out),
+    border-color var(--app-motion-fast) var(--app-ease-out),
+    box-shadow var(--app-motion-fast) var(--app-ease-out);
+}
+
+.t-input.t-input--focused,
+.t-textarea__inner:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--td-text-color-link) 12%, transparent);
+}
+
+.t-checkbox__input,
+.t-radio__input {
+  transition: background-color var(--app-motion-fast), border-color var(--app-motion-fast);
+}
+
+.t-dropdown__menu,
+.t-select__list {
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-button:not(.t-is-disabled):not(.t-is-loading):active { transform: none; }
+}
+
+@media (max-width: 720px) {
+  .t-dialog {
+    max-width: calc(100vw - 24px);
+  }
+  .t-dialog__body {
+    overflow-wrap: anywhere;
+  }
+}

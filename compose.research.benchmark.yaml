@@ -1,0 +1,9 @@
+# Only use with a disposable, restored QA project. The same additive schema is
+# mounted so the unmodified v0.8.3 entrypoint does not attempt to downgrade it.
+# This compares the official app binary against the custom binary on one corpus.
+services:
+  app:
+    image: wechatopenai/weknora-app:v0.8.3@sha256:b5f96b13c2f69779af8c7291264cafbda64c208398b019e3a6223c6f3ea82031
+    build: !reset null
+    volumes:
+      - ./migrations:/app/migrations:ro

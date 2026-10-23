@@ -1,0 +1,12 @@
+# Run the unmodified, pinned upstream binaries with the same five-service
+# configuration before comparing the customized application.
+services:
+  frontend:
+    image: wechatopenai/weknora-ui:v0.8.3@sha256:94f7992e963b1e2e3b8dc429091f1204fde9c3cd985175b16f40b4142f915fe5
+    build: !reset null
+  app:
+    image: wechatopenai/weknora-app:v0.8.3@sha256:b5f96b13c2f69779af8c7291264cafbda64c208398b019e3a6223c6f3ea82031
+    build: !reset null
+  docreader:
+    image: wechatopenai/weknora-docreader:v0.8.3@sha256:9af668ac0ac857b9dfe8430d0fe77c0e5ad2636dc2b5285cd5500a13d5a35266
+    build: !reset null

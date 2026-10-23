@@ -1,0 +1,5 @@
+DROP INDEX research_writing_rules_event;
+ALTER TABLE research_writing_rules DROP COLUMN source_event_id;
+DROP TABLE research_writing_extractions;
+DROP TABLE research_writing_learning_settings;
+DROP TABLE research_writing_events;

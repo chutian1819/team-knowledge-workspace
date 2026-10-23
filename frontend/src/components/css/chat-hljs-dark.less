@@ -1,0 +1,26 @@
+// Global palettes are inherited by chat code blocks. Keep color selection here
+// and syntax categories in chat-hljs.less; scoped component specificity then
+// has no effect on light/dark theme switching.
+:root {
+  --chat-hljs-text: #24292e;
+  --chat-hljs-keyword: #d73a49;
+  --chat-hljs-title: #6f42c1;
+  --chat-hljs-attribute: #005cc5;
+  --chat-hljs-string: #032f62;
+  --chat-hljs-builtin: #e36209;
+  --chat-hljs-comment: #6a737d;
+  --chat-hljs-name: #22863a;
+  --chat-hljs-section: #005cc5;
+}
+
+:root[theme-mode='dark'] {
+  --chat-hljs-text: #c9d1d9;
+  --chat-hljs-keyword: #ff7b72;
+  --chat-hljs-title: #d2a8ff;
+  --chat-hljs-attribute: #79c0ff;
+  --chat-hljs-string: #a5d6ff;
+  --chat-hljs-builtin: #ffa657;
+  --chat-hljs-comment: #8b949e;
+  --chat-hljs-name: #7ee787;
+  --chat-hljs-section: #79c0ff;
+}

@@ -1,0 +1,212 @@
+# Optional local research services. Start the five-service platform first.
+# Secrets live in the ignored, mode-0600 .research-observability.env file.
+# docker compose --env-file .research-observability.env -f compose.research.observability.yaml up -d
+name: context-observability
+
+x-runtime: &runtime
+  restart: unless-stopped
+  networks: [research]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+
+x-langfuse-env: &langfuse-env
+  DATABASE_URL: ${LF_DATABASE_URL:?Run the local observability setup first}
+  REDIS_CONNECTION_STRING: ${LF_REDIS_URL:?Run the local observability setup first}
+  SALT: ${LF_SALT:?}
+  ENCRYPTION_KEY: ${LF_ENCRYPTION_KEY:?}
+  NEXTAUTH_URL: http://localhost:3000
+  TELEMETRY_ENABLED: "false"
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+  CLICKHOUSE_URL: http://research-langfuse-clickhouse:8123
+  CLICKHOUSE_MIGRATION_URL: clickhouse://research-langfuse-clickhouse:9000
+  CLICKHOUSE_USER: langfuse
+  CLICKHOUSE_PASSWORD: ${LF_CLICKHOUSE_PASSWORD:?}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LF_MINIO_PASSWORD:?}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://research-langfuse-minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LF_MINIO_PASSWORD:?}
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://research-langfuse-minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  NODE_OPTIONS: --max-old-space-size=1024
+
+services:
+  # Independent queue/cache: platform backups and restarts must not stop it.
+  # Reserve half the container limit for AOF buffers and fork/rewrite overhead.
+  langfuse-redis:
+    <<: *runtime
+    image: redis:7.0-alpine@sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2
+    container_name: research-langfuse-redis
+    mem_limit: 256m
+    cpus: 0.5
+    cpu_shares: 512
+    environment:
+      LF_REDIS_PASSWORD: ${LF_REDIS_PASSWORD:?Run setup --migrate-redis for an existing installation}
+    command: [redis-server, --appendonly, "yes", --appendfsync, everysec, --maxmemory, 128mb, --maxmemory-policy, noeviction, --requirepass, "${LF_REDIS_PASSWORD:?}"]
+    volumes: [langfuse-redis-data:/data]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$LF_REDIS_PASSWORD" redis-cli ping | grep -qx PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    stop_grace_period: 1m
+
+  embedding:
+    <<: *runtime
+    image: ollama/ollama:0.40.8@sha256:2b8eecdb85aa6ea67c381c8ecffec04b2658496cf2821a8f88b0485bdff198e8
+    container_name: research-embedding
+    mem_limit: 2g
+    cpus: 2
+    cpu_shares: 1024
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "32"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: 10m
+    volumes: [embedding-models:/root/.ollama]
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # Same weights and dimensions, separate queue/CPU budget. The application
+  # routes only explicitly marked background indexing to this runner.
+  embedding-ingest:
+    <<: *runtime
+    image: ollama/ollama:0.40.8@sha256:2b8eecdb85aa6ea67c381c8ecffec04b2658496cf2821a8f88b0485bdff198e8
+    container_name: research-embedding-ingest
+    mem_limit: 2g
+    cpus: 1.5
+    cpu_shares: 256
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "16"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: 10m
+    # Models are provisioned by the primary runner; background cannot change
+    # or download a different copy while queries use the existing model.
+    volumes: [embedding-models:/root/.ollama:ro]
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  clickhouse:
+    <<: *runtime
+    image: clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6
+    container_name: research-langfuse-clickhouse
+    user: "101:101"
+    mem_limit: 2g
+    cpus: 1
+    cpu_shares: 256
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${LF_CLICKHOUSE_PASSWORD:?}
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
+    healthcheck:
+      test: [CMD-SHELL, "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  minio:
+    <<: *runtime
+    image: cgr.dev/chainguard/minio@sha256:ad134b2dd572ae0d989d6807c3e45516cc75a34883a8021db2ff04be5d1d496a
+    container_name: research-langfuse-minio
+    mem_limit: 512m
+    cpus: 0.5
+    cpu_shares: 256
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: langfuse
+      MINIO_ROOT_PASSWORD: ${LF_MINIO_PASSWORD:?}
+    ports: ["127.0.0.1:9100:9000"]
+    volumes: [minio-data:/data]
+    healthcheck:
+      test: [CMD, mc, ready, local]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  langfuse-worker:
+    <<: *runtime
+    image: docker.langfuse.com/langfuse/langfuse-worker:4@sha256:a0ec08090953ad8d710565a23cda1b24e84dc889c9122e88df2c5b8ada4cfe1f
+    container_name: research-langfuse-worker
+    mem_limit: 1536m
+    cpus: 1
+    cpu_shares: 256
+    environment:
+      <<: *langfuse-env
+      # BullMQ uses long-lived blocking Redis reads. In this pinned Langfuse
+      # version, 0 omits ioredis's idle socket timeout; TCP keepalive/reconnect
+      # remain enabled. Do not apply this exception to the web request client.
+      REDIS_SOCKET_TIMEOUT_MS: "0"
+    depends_on:
+      langfuse-redis: {condition: service_healthy}
+      clickhouse: {condition: service_healthy}
+      minio: {condition: service_healthy}
+
+  langfuse-web:
+    <<: *runtime
+    image: docker.langfuse.com/langfuse/langfuse:4@sha256:8e2b58b5086bfc955452a12c72eb2306bf3cb2ec59de8115454514c4c8e36e33
+    container_name: research-langfuse-web
+    mem_limit: 1536m
+    cpus: 1
+    cpu_shares: 1024
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      <<: *langfuse-env
+      # Next standalone otherwise binds Docker's HOSTNAME address only;
+      # include loopback so the in-container readiness check can reach it.
+      HOSTNAME: 0.0.0.0
+      NEXTAUTH_SECRET: ${LF_NEXTAUTH_SECRET:?}
+      AUTH_DISABLE_SIGNUP: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9100
+      LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://research-langfuse-minio:9000
+      LANGFUSE_INIT_ORG_ID: research-team
+      LANGFUSE_INIT_ORG_NAME: 团队研究工作台
+      LANGFUSE_INIT_PROJECT_ID: embodied-research
+      LANGFUSE_INIT_PROJECT_NAME: 具身智能研究闭环
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?}
+      LANGFUSE_INIT_USER_EMAIL: ${LF_ADMIN_EMAIL:?}
+      LANGFUSE_INIT_USER_NAME: 研究平台管理员
+      LANGFUSE_INIT_USER_PASSWORD: ${LF_ADMIN_PASSWORD:?}
+    depends_on:
+      langfuse-redis: {condition: service_healthy}
+      clickhouse: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/public/health?failIfDatabaseUnavailable=true').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+networks:
+  research:
+    external: true
+    name: context-workspace_WeKnora-network
+
+volumes:
+  langfuse-redis-data:
+  embedding-models:
+  clickhouse-data:
+  clickhouse-logs:
+  minio-data:

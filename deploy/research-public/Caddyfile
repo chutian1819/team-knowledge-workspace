@@ -1,0 +1,13 @@
+{
+	# The public relay forwards TCP HTTP/HTTPS; no UDP listener is published.
+	servers {
+		protocols h1 h2
+	}
+}
+
+team-aiorigin.owo.lat {
+	reverse_proxy public-gateway:80 {
+		# Deliver chat events as they arrive.
+		flush_interval -1
+	}
+}

@@ -1,0 +1,33 @@
+# Shared research deployment models. Credentials come from the ignored .env.
+# Existing knowledge bases retain their model IDs and original vector indexes.
+builtin_models:
+  - id: builtin-bailian-embedding-v4
+    tenant_id: 10002
+    name: text-embedding-v4
+    type: Embedding
+    source: remote
+    status: active
+    is_default: true
+    description: 阿里云百炼中文及多语言语义检索，1024 维；用于新知识库。
+    parameters:
+      provider: aliyun
+      base_url: ${BAILIAN_BASE_URL}/compatible-mode/v1
+      api_key: ${BAILIAN_API_KEY}
+      max_concurrency: 4
+      embedding_parameters:
+        dimension: 1024
+        truncate_prompt_tokens: 0
+        supports_dimension_override: true
+
+  - id: builtin-bailian-qwen3-rerank
+    tenant_id: 10002
+    name: qwen3-rerank
+    type: Rerank
+    source: remote
+    status: active
+    is_default: true
+    description: 阿里云百炼中文及多语言检索重排序；内置助手默认使用。
+    parameters:
+      provider: aliyun
+      base_url: ${BAILIAN_BASE_URL}/api/v1/services/rerank/text-rerank/text-rerank
+      api_key: ${BAILIAN_API_KEY}

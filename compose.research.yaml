@@ -1,0 +1,89 @@
+name: ${RESEARCH_PROJECT:-context-workspace}
+
+# The only five services in this distribution. Optional upstream profiles are
+# intentionally not part of this file. Keep the upstream compose unchanged.
+services:
+  frontend:
+    extends:
+      file: docker-compose.yml
+      service: frontend
+    image: ${RESEARCH_FRONTEND_IMAGE:-context-workspace/frontend:0.1.0}
+    container_name: ${RESEARCH_PROJECT:-context-workspace}-frontend
+    mem_limit: ${RESEARCH_FRONTEND_MEMORY:-128m}
+    cpus: ${RESEARCH_FRONTEND_CPUS:-0.5}
+    cpu_shares: 512
+    ports: !override
+      - "${RESEARCH_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-8090}:80"
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    image: ${RESEARCH_APP_IMAGE:-context-workspace/app:0.1.0}
+    container_name: ${RESEARCH_PROJECT:-context-workspace}-app
+    mem_limit: ${RESEARCH_APP_MEMORY:-1g}
+    cpus: ${RESEARCH_APP_CPUS:-1.5}
+    cpu_shares: 2048
+    env_file: !override
+      - ${RESEARCH_ENV_FILE:-.env}
+    volumes:
+      - ./config/builtin_models.yaml:/app/config/builtin_models.yaml:ro
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.research-app
+    ports: !reset []
+    environment:
+      - NEO4J_ENABLE=false
+      # Opt in to a separate Langfuse project (local optional stack or remote).
+      - LANGFUSE_ENABLED=${LANGFUSE_ENABLED:-false}
+      - OLLAMA_OPTIONAL=true
+      - WEKNORA_SANDBOX_DOCKER_ENABLED=false
+      - JIEBA_DICT_DIR=/go/pkg/mod/github.com/yanyiwu/gojieba@v1.4.7/deps/cppjieba/dict
+      # Bound foreground database usage separately from the optional telemetry
+      # service. These limits are for this local distribution only.
+      - WEKNORA_DB_MAX_OPEN_CONNS=${WEKNORA_DB_MAX_OPEN_CONNS:-20}
+      - WEKNORA_DB_MAX_IDLE_CONNS=${WEKNORA_DB_MAX_IDLE_CONNS:-5}
+      - GOMEMLIMIT=${RESEARCH_APP_GO_MEMORY:-768MiB}
+      # The native logger expects a template, not "json". Do not inherit
+      # unrelated host tooling's LOG_FORMAT=json (which hides every message).
+      - LOG_FORMAT=${RESEARCH_LOG_FORMAT:-}
+  docreader:
+    extends:
+      file: docker-compose.yml
+      service: docreader
+    image: ${RESEARCH_DOCREADER_IMAGE:-context-workspace/docreader:0.1.0}
+    container_name: ${RESEARCH_PROJECT:-context-workspace}-docreader
+    mem_limit: ${RESEARCH_DOCREADER_MEMORY:-768m}
+    cpus: ${RESEARCH_DOCREADER_CPUS:-0.75}
+    cpu_shares: 256
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.research-docreader
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+    image: paradedb/paradedb:v0.25.11-pg17@sha256:78d65750f0f88a56548526201bcab9910f83b90fe929cdbf979890f3f80b0f95
+    container_name: ${RESEARCH_PROJECT:-context-workspace}-postgres
+    mem_limit: ${RESEARCH_POSTGRES_MEMORY:-1g}
+    cpus: ${RESEARCH_POSTGRES_CPUS:-1.5}
+    cpu_shares: 2048
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+    container_name: ${RESEARCH_PROJECT:-context-workspace}-redis
+    mem_limit: ${RESEARCH_REDIS_MEMORY:-256m}
+    cpus: ${RESEARCH_REDIS_CPUS:-0.5}
+    cpu_shares: 1024
+    image: redis:7.0-alpine@sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2
+    volumes:
+      - redis-data:/data
+
+networks:
+  WeKnora-network:
+    driver: bridge
+volumes:
+  postgres-data:
+  data-files:
+  docreader-tmp:
+  redis-data:

@@ -1,0 +1,27 @@
+# Reuse the tested upstream runtime (native libraries, browser integration,
+# migrations tool). Only replace our application binary and additive sources.
+FROM golang:1.26.0-bookworm@sha256:2a0ba12e116687098780d3ce700f9ce3cb340783779646aafbabed748fa6677c AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends libsqlite3-dev=3.40.1-2+deb12u2 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY third_party/anydoc-go/go.mod third_party/anydoc-go/go.mod
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 go build -p 2 -trimpath -o /out/WeKnora ./cmd/server
+
+# Optional target for the core workflow regression suite; production builds do
+# not execute it. Reuse the same compiler, native libraries and dependency cache.
+FROM builder AS research-test
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    GOMAXPROCS=2 LOG_FORMAT= JIEBA_DICT_DIR=/go/pkg/mod/github.com/yanyiwu/gojieba@v1.4.7/deps/cppjieba/dict \
+    go test -p 2 ./internal/application/service ./internal/application/repository ./internal/handler \
+    ./internal/router ./internal/types ./internal/container -run TestResearch -count=1
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    GOMAXPROCS=2 LOG_FORMAT= go test -p 2 ./internal/tracing/langfuse -count=1
+
+FROM wechatopenai/weknora-app:v0.8.3@sha256:b5f96b13c2f69779af8c7291264cafbda64c208398b019e3a6223c6f3ea82031
+ENV JIEBA_DICT_DIR=/go/pkg/mod/github.com/yanyiwu/gojieba@v1.4.7/deps/cppjieba/dict
+COPY --from=builder /out/WeKnora /app/WeKnora
+COPY migrations /app/migrations
