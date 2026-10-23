@@ -70,7 +70,9 @@ jobs:
         run: uv run --project docreader --python ${{ env.PYTHON_VERSION }} python -m playwright install --with-deps webkit
 
       - name: Run Python tests
-        run: uv run --project docreader --python ${{ env.PYTHON_VERSION }} python -m unittest discover -s docreader/tests -p "test_*.py" -v
+        # pytest also discovers the existing unittest cases, while running the
+        # research export functions and fixtures that unittest cannot discover.
+        run: uv run --project docreader --python ${{ env.PYTHON_VERSION }} --with pytest==8.4.2 python -m pytest docreader/tests -v
 
       - uses: actions/setup-go@v6
         with:

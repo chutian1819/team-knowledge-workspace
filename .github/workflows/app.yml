@@ -111,7 +111,9 @@ jobs:
           else
             base="$BASE_SHA"
             if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]]; then
-              base=$(git rev-parse HEAD^)
+              # A new repository's first push has neither a before SHA nor a
+              # parent commit. Compare its complete source against an empty tree.
+              base=$(git rev-parse --verify HEAD^ 2>/dev/null || git hash-object -w -t tree --stdin </dev/null)
             fi
             diff_range="$base..$GITHUB_SHA"
           fi
